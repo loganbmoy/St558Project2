@@ -1,0 +1,151 @@
+---
+title: "staticApp"
+author: "Logan Moy"
+format: html
+editor: visual
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+---
+
+```{r}
+library(tidyverse)
+library(scales)
+```
+
+
+# Examining the Melbourne Housing data
+Data is provided here: https://www.kaggle.com/datasets/anthonypino/melbourne-housing-market
+
+Uses MELBOURNE_HOUSE_PRICES_LESS
+
+## Making sure the data is in a good format
+
+```{r}
+mhData <- read_csv("data/MELBOURNE_HOUSE_PRICES_LESS.csv")
+
+# Date sold split into components
+mhData <- mhData %>% separate_wider_delim(cols = Date,delim = "/", names = c("Day", "Month", "Year"), cols_remove = FALSE) %>%
+  mutate(across(c(Day, Month, Year), as.numeric)) %>%
+  # Making some cols factors
+  # possibly could bin postcodes and make it a factor, but not sure if binned codes are related to one another
+  mutate(across(c(Rooms, Type, Method, Regionname, CouncilArea, Month, Year), as.factor)) # probably dont care about day being a factor
+
+# Labels
+mhData$MethodLab <- factor(mhData$Method, levels = levels(mhData$Method), labels = c("Passed in", "Sold prior not disclosed", "Sold", "Sold after auction", "Sold not disclosed", "Sold prior", "Sold after auction, not disclosed", "Vendor bid" , "Withdrawn"))
+
+mhData$Type <- factor(mhData$Type, levels = levels(mhData$Type), labels = c("house", "townhouse", "unit"))
+
+```
+
+
+## Examples of contingency tables
+
+### One way
+
+```{r}
+table(mhData$Rooms)
+```
+```{r}
+table(mhData$MethodLab)
+```
+
+### Two way
+
+```{r}
+table(mhData$Regionname, mhData$Year)
+```
+
+```{r}
+table(mhData$Month, mhData$Regionname)
+```
+
+### Summaries for quantitative variables at levels of categorical variables
+
+```{r}
+summaryQ <- function(df, group, var) {
+  df %>%
+    group_by({{group}}) %>%
+    summarize(
+      n = n(),
+      mean = mean({{var}}, na.rm = TRUE),
+      sd = sd({{var}}, na.rm = TRUE),
+      median = median({{var}}, na.rm = TRUE),
+      min = min({{var}}, na.rm = TRUE),
+      max = max({{var}}, na.rm = TRUE),
+      .groups = "drop"
+    )
+}
+
+```
+
+
+```{r}
+summaryQ(mhData, Type, Distance)
+```
+
+```{r}
+summaryQ(mhData, Rooms, Price)
+```
+
+### Some plots
+
+```{r}
+ggplot(mhData, aes(x = Distance)) + geom_histogram(bins = 25) + 
+  xlab("Distance in km from Central Business District (CBD)") +
+  labs(title = "Count of sold property's distance from CBD",
+       subtitle = "Uses Bins = 25") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(mhData, aes(x = Month, fill = Regionname)) + geom_bar() + 
+  facet_wrap(~Year) +
+  scale_fill_viridis_d("Region") +
+  labs(title = "Number of properties sold per month by year",
+       x = "Month") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(mhData, aes(x = Type, y = Distance)) + geom_boxplot() + 
+  labs(title = "Distance (km) distribution by property type") +
+  theme_minimal()
+```
+```{r}
+ggplot(mhData, aes(x = Distance, y = Price, color = Method)) + geom_point(na.rm = TRUE, alpha = 0.5) +
+  facet_grid(~ Year) +
+  scale_y_continuous(labels = label_number(scale = 1e-6)) +
+  labs(title = "Property prices tend to be higher closer to Melbourne's CBD, regardless of year", 
+       x = "Distance from CBD (km)",
+       y = "Price (AUD Millions)") +
+  scale_color_viridis_d(name = "Method", option = "C") +
+  theme_minimal()
+```
+
+```{r}
+ggplot(mhData, aes(x = Method, fill = Type )) +
+  geom_bar(position = "dodge") +
+  labs(title = "Most properties are sold",
+       x = "Sell method") +
+  theme_minimal()
+```
+```{r}
+ggplot(mhData, aes(x = reorder(CouncilArea, CouncilArea, length))) +
+  geom_bar() +
+  labs(title = "Which counties has the most properities sold",
+       x = "Council Area") +
+  coord_flip() +
+  theme_minimal()
+```
+
+
+# New plot
+
+```{r}
+library(ggbeeswarm)
+ggplot(mhData,aes(Year, Price, color = Type)) + geom_quasirandom(na.rm = TRUE, alpha = 0.5) + 
+  labs(title = "Variation in property prices across years by type", 
+       y = "Price (AUD Millions)") +
+  scale_y_continuous(labels = label_number(scale = 1e-6)) +
+  theme_minimal()
+```
+
