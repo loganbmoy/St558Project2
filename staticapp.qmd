@@ -34,6 +34,10 @@ mhData$MethodLab <- factor(mhData$Method, levels = levels(mhData$Method), labels
 
 mhData$Type <- factor(mhData$Type, levels = levels(mhData$Type), labels = c("house", "townhouse", "unit"))
 
+if (!file.exists("data/mhData.rds")) {
+  saveRDS(mhData, file = "data/mhData.rds")
+}
+
 ```
 
 
@@ -131,7 +135,7 @@ ggplot(mhData, aes(x = Method, fill = Type )) +
 ```{r}
 ggplot(mhData, aes(x = reorder(CouncilArea, CouncilArea, length))) +
   geom_bar() +
-  labs(title = "Which counties has the most properities sold",
+  labs(title = "Which councils have the most properities sold",
        x = "Council Area") +
   coord_flip() +
   theme_minimal()
