@@ -27,7 +27,7 @@ mhData <- mhData %>% separate_wider_delim(cols = Date,delim = "/", names = c("Da
   mutate(across(c(Day, Month, Year), as.numeric)) %>%
   # Making some cols factors
   # possibly could bin postcodes and make it a factor, but not sure if binned codes are related to one another
-  mutate(across(c(Rooms, Type, Method, Regionname, CouncilArea, Month, Year), as.factor)) # probably dont care about day being a factor
+  mutate(across(c(Rooms, Type, Method, Regionname, CouncilArea, Day, Month, Year), as.factor)) # probably dont care about day being a factor
 
 # Labels
 mhData$MethodLab <- factor(mhData$Method, levels = levels(mhData$Method), labels = c("Passed in", "Sold prior not disclosed", "Sold", "Sold after auction", "Sold not disclosed", "Sold prior", "Sold after auction, not disclosed", "Vendor bid" , "Withdrawn"))

@@ -14,6 +14,18 @@ library(shinycssloaders)
 # Loading Data
 mhData <- readRDS("data/mhData.rds")
 
+numVars <- mhData[sapply(mhData, is.numeric)] %>%
+  #select(-c(Day, Postcode)) %>% 
+  names
+
+# charVars <- mhData[sapply(mhData, is.character)] %>%
+#   select(-c(Address, Date)) %>% # not really interested in looking at these, too many unique values or accounted for elsewhere
+#   names
+
+catVars <- mhData[sapply(mhData, is.factor)] %>%
+  select(-c(Method)) %>% # Methodlab is a bit more descriptive and CouncilArea should be reserved for certain bar graphs
+  names
+
 # Define UI for application that explores the Melbourne Data
 
 ui <- dashboardPage(
@@ -167,16 +179,210 @@ ui <- dashboardPage(
         
         # Row for graphs
         fluidRow(
+          
+          # If a certain number the following plots use the same vars, something like this could be useful
+          # prob will restrict though, so unique choices will be used
+          # fluidRow(
+          #   box(
+          #     width = 12,
+          #     
+          #     selectInput("numVar", "Numeric Variable", numVars),
+          #     selectInput("catVar", "Categorical Variable", catVars)
+          #   )
+          # ),
+          
           tabBox(
             title = "Graphs",
             width = 12,
             
-            tabPanel("Histogram", plotOutput("mhHistogram")),
-            tabPanel("Bar Graph", plotOutput("mhBar")),
-            tabPanel("Facet Bar Graph", plotOutput("mhBarFacet")),
-            tabPanel("Scatterplot", plotOutput("mhScatter")),
-            tabPanel("Boxplot", plotOutput("mhBoxplot")),
-            tabPanel("Beeswarm", plotOutput("mhBee"))
+            tabPanel("Histogram", 
+                     radioButtons("histVar",
+                                  "Numeric Variable",
+                                  choices = c("Price", "Property Count", "Distance"),
+                                  selected = "Price"
+                                  ),
+                     radioButtons("histColor",
+                                  "Color Variable",
+                                  choices = c(
+                                    "None" = "None",
+                                    "Rooms" = "Rooms",
+                                    "Type" = "Type",
+                                    "Month" = "Month",
+                                    "Year" = "Year",
+                                    "Region" = "Regionname",
+                                    "Method of Sale" = "Method"
+                                  ),
+                                  selected = "None"
+                     ),
+                     plotOutput("mhHistogram")),
+            
+            ########################## maybe add pos option for side-by-side here
+            tabPanel("Bar Graph",
+                     radioButtons("barVarx",
+                                  "X Variable",
+                                  choices = c(
+                                    "Rooms" = "Rooms",
+                                    "Type" = "Type",
+                                    "Month" = "Month",
+                                    "Year" = "Year",
+                                    "Region" = "Regionname",
+                                    "Method of Sale" = "Method"
+                                  )
+                     ),
+                     radioButtons("barColor",
+                                  "Color Variable",
+                                  choices = c(
+                                    "None" = "None",
+                                    "Rooms" = "Rooms",
+                                    "Type" = "Type",
+                                    "Month" = "Month",
+                                    "Year" = "Year",
+                                    "Region" = "Regionname",
+                                    "Method of Sale" = "Method"
+                                  ),
+                                  selected = "None"
+                     ),
+                     plotOutput("mhBar")),
+            
+            tabPanel("Facet Bar Graph", 
+                     radioButtons(
+                       "barFacetVarx",
+                       "X Variable",
+                       choices = c(
+                         "Rooms" = "Rooms",
+                         "Type" = "Type",
+                         "Month" = "Month",
+                         "Year" = "Year",
+                         "Region" = "Regionname",
+                         "Method of Sale" = "Method"
+                       )
+                     ),
+                     radioButtons("barFacetColor",
+                                  "Color Variable",
+                                  choices = c(
+                                    "None" = "None",
+                                    "Rooms" = "Rooms",
+                                    "Type" = "Type",
+                                    "Month" = "Month",
+                                    "Year" = "Year",
+                                    "Region" = "Regionname",
+                                    "Method of Sale" = "Method"
+                                  ),
+                                  selected = "None"
+                     ),
+                     radioButtons("barFacetFacet",
+                                  "Facet Variable",
+                                  choices = c(
+                                    "None" = "None",
+                                    "Rooms" = "Rooms",
+                                    "Type" = "Type",
+                                    "Month" = "Month",
+                                    "Year" = "Year",
+                                    "Region" = "Regionname",
+                                    "Method of Sale" = "Method"
+                                  ),
+                                  selected = "None"
+                     ),
+                     plotOutput("mhBarFacet")),
+            
+            tabPanel("Flipped Bar Graph",
+                     radioButtons("barFlipVarx",
+                                  "X Variable",
+                                  choices = c(
+                                    "Rooms" = "Rooms",
+                                    "Type" = "Type",
+                                    "Month" = "Month",
+                                    "Year" = "Year",
+                                    "Region" = "Regionname",
+                                    "Method of Sale" = "Method"
+                                  )
+                     ),
+                     radioButtons("barFlipColor",
+                                  "Color Variable",
+                                  choices = c(
+                                    "None" = "None",
+                                    "Rooms" = "Rooms",
+                                    "Type" = "Type",
+                                    "Month" = "Month",
+                                    "Year" = "Year",
+                                    "Region" = "Regionname",
+                                    "Method of Sale" = "Method"
+                                  ),
+                                  selected = "None"
+                     ),
+                     plotOutput("mhBarFlip")),
+            
+            tabPanel("Scatterplot", 
+                     radioButtons("scatterVarx",
+                                  "X Variable",
+                                  choices = c("Price", "Property Count", "Distance")
+                     ),
+                     radioButtons("scatterVary",
+                                  "Y Variable",
+                                  choices = c("Price", "Property Count", "Distance"),
+                                  selected = "Property Count"
+                     ),
+                     radioButtons("scatterColor",
+                                  "Color Variable",
+                                  choices = c(
+                                    "None" = "None",
+                                    "Rooms" = "Rooms",
+                                    "Type" = "Type",
+                                    "Month" = "Month",
+                                    "Year" = "Year",
+                                    "Region" = "Regionname",
+                                    "Method of Sale" = "Method"
+                                  ),
+                                  selected = "None"
+                     ),
+                     plotOutput("mhScatter")),
+            tabPanel("Boxplot", 
+                     radioButtons("boxVarx",
+                                  "X Variable",
+                                  choices = c(
+                                    "Rooms" = "Rooms",
+                                    "Type" = "Type",
+                                    "Month" = "Month",
+                                    "Year" = "Year",
+                                    "Region" = "Regionname",
+                                    "Method of Sale" = "Method"
+                                  )
+                     ),
+                     radioButtons("boxVary",
+                                  "Y Variable",
+                                  choices = c("Price", "Property Count", "Distance")
+                     ),
+                     plotOutput("mhBoxplot")),
+            tabPanel("Beeswarm",
+                     radioButtons("beeVarx",
+                                  "X Variable",
+                                  choices = c(
+                                    "Rooms" = "Rooms",
+                                    "Type" = "Type",
+                                    "Month" = "Month",
+                                    "Year" = "Year",
+                                    "Region" = "Regionname",
+                                    "Method of Sale" = "Method"
+                                  )
+                     ),
+                     radioButtons("beeVary",
+                                  "Y Variable",
+                                  choices = c("Price", "Property Count", "Distance")
+                     ),
+                     radioButtons("beeColor",
+                                  "Color Variable",
+                                  choices = c(
+                                    "None" = "None",
+                                    "Rooms" = "Rooms",
+                                    "Type" = "Type",
+                                    "Month" = "Month",
+                                    "Year" = "Year",
+                                    "Region" = "Regionname",
+                                    "Method of Sale" = "Method"
+                                  ),
+                                  selected = "None"
+                     ),
+                     plotOutput("mhBee"))
           )
         ),
         
@@ -186,19 +392,52 @@ ui <- dashboardPage(
             title = "Summaries",
             width = 12,
             
+            # Summary
             tabPanel(
               "Summary Statistics",
-              tableOutput("summaryStats")
+              selectInput("sumNumVar", "Numeric Variable", c("Price", "Property Count", "Distance")),
+              selectInput("sumCatVar", "Categorical Variable",
+                          c("Rooms",
+                            "Type",
+                            "Month",
+                            "Year",
+                            "Region",
+                            "Method of Sale",
+                            "Council Area"
+                          )),
+              tableOutput("summaryStats"),
+              
+              # Action Button
+              actionButton(
+                inputId = "makeSummary",
+                label = "Make Summary"
+              )
             ),
             
-            tabPanel(
-              "Frequency Table",
-              tableOutput("freqTable")
-            ),
-            
+            # Contingency Table, does 1 or 2 way depending on input count
             tabPanel(
               "Contingency Table",
-              tableOutput("contingencyTable")
+              # Make sure something is selected here
+              selectizeInput("tabCat", "Categorical Variable", 
+                             choices = c(
+                               "Rooms" = "Rooms",
+                               "Type" = "Type",
+                               "Month" = "Month",
+                               "Year" = "Year",
+                               "Region" = "Regionname",
+                               "Method of Sale" = "Method",
+                               "Council Area" = "CouncilArea"
+                             ), 
+                             multiple = TRUE,
+                             options = list(maxItems = 2),
+                             selected = c("Rooms", "Type")),
+              tableOutput("contingencyTable"),
+              
+              # Action Button
+              actionButton(
+                inputId = "makeTable",
+                label = "Make Table"
+              )
             )
           )
         )
@@ -269,13 +508,42 @@ server <- function(input, output, session) {
   )
   
   ########## Data Exploration  ########## 
+
   
-  observeEvent(input$plots, {
-    if(input$plots == ""){
+  # Plots
+  # output$mhHistogram <- renderPlot({
+  #   validate(
+  #     need(!is.null(sample_corr$corr_data), "Please select your variables, subset, and click the 'Get a Sample!' button.")
+  #   )
+  #   ggplot(sample_corr$corr_data, aes_string(x = isolate(input$corr_x), y = isolate(input$corr_y))) +
+  #     geom_point()
+  # })
+  
+  
+  
+  # Summary
+  observeEvent(input$makeSummary, {
+
+  })
+  
+  # Table, only remakes when makeTable used
+  contTable <- eventReactive(input$makeTable, {
+    
+    validate(need(length(input$tabCat) >= 1, "Select one or two variables."))
+    
+    if (length(input$tabCat) == 1) {
       
+      table(mhSub()[[input$tabCat[1]]])
+      
+    } else {
+      
+      table(mhSub()[[input$tabCat[1]]], mhSub()[[input$tabCat[2]]])
     }
   })
-
+  
+  output$contingencyTable <- renderTable({
+    contTable()
+  })
 }
 
 # Run the application 
