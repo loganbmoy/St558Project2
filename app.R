@@ -9,10 +9,10 @@ library(bslib)
 library(tidyverse)
 library(scales)
 library(shinydashboard)
-
+library(shinycssloaders)
 
 # Loading Data
-readRDS("data/mhData.rds")
+mhData <- readRDS("data/mhData.rds")
 
 # Define UI for application that explores the Melbourne Data
 
@@ -38,11 +38,11 @@ ui <- dashboardPage(
       inputId = "subRegion",
       label = "Region Name:",
       choices = c("All", 
-                  "Northern Metro",
-                  "Western Metro",
-                  "Southern Metro",
-                  "South-Eastern Metro",
-                  "Eastern Metro",
+                  "Northern Metropolitan",
+                  "Western Metropolitan",
+                  "Southern Metropolitan",
+                  "South-Eastern Metropolitan",
+                  "Eastern Metropolitan",
                   "Northern Victoria",
                   "Western Victoria",
                   "Eastern Victoria"
@@ -101,12 +101,15 @@ ui <- dashboardPage(
     
     tabItems(
       
+      # About tab
       tabItem(
         tabName = "about",
         
         fluidRow(
+          titlePanel(
+            title = "About"
+          ),
           box(
-            title = "About",
             width = 12,
             solidHeader = TRUE,
             p("This app looks at data from the Melbourne Housing Market. I use the MELBOURNE_HOUSE_PRICES_LESS dataset."),
@@ -121,6 +124,7 @@ ui <- dashboardPage(
           )
         ),
         
+        # pic
         tags$figure(
           style = "text-align:center;",
           tags$img(
@@ -140,6 +144,7 @@ ui <- dashboardPage(
         )
       ),
       
+      # Download tab
       tabItem(
         tabName = "downloader",
         
@@ -156,16 +161,45 @@ ui <- dashboardPage(
         )
       ),
       
+      # Explorer tab
       tabItem(
         tabName = "explorer",
         
+        # Row for graphs
         fluidRow(
-          box(
-            title = "Data Exploration",
+          tabBox(
+            title = "Graphs",
             width = 12,
-            status = "success",
-            solidHeader = TRUE,
             
+            tabPanel("Histogram", plotOutput("mhHistogram")),
+            tabPanel("Bar Graph", plotOutput("mhBar")),
+            tabPanel("Facet Bar Graph", plotOutput("mhBarFacet")),
+            tabPanel("Scatterplot", plotOutput("mhScatter")),
+            tabPanel("Boxplot", plotOutput("mhBoxplot")),
+            tabPanel("Beeswarm", plotOutput("mhBee"))
+          )
+        ),
+        
+        # Row for summaries
+        fluidRow(
+          tabBox(
+            title = "Summaries",
+            width = 12,
+            
+            tabPanel(
+              "Summary Statistics",
+              tableOutput("summaryStats")
+            ),
+            
+            tabPanel(
+              "Frequency Table",
+              tableOutput("freqTable")
+            ),
+            
+            tabPanel(
+              "Contingency Table",
+              tableOutput("contingencyTable")
+            )
           )
         )
       )
@@ -173,30 +207,75 @@ ui <- dashboardPage(
   )
 )
 
-# Define server logic
+# Server
 server <- function(input, output, session) {
- 
   
-  # Main Panel Date Download
+  ########## Data Download  ########## 
   
-  ## Data Table
-  output$dataTable <- DT::renderDataTable({
-    req(input$subRegion)
-    mhSub <- mhData ######## sub here
-    DT::datatable(data = mhSub,
-                  options = list(pageLength = 10),
-                  rownames = FALSE)
+  # Reactive filter
+  mhSub <- eventReactive(input$houseSub, {
+    
+    data <- mhData
+    
+    # Filter cate
+    if (input$subYear != "All") {
+      data <- filter(data, Year == as.numeric(input$subYear))
+    }
+    
+    if (input$subRegion != "All") {
+      data <- filter(data, Regionname == input$subRegion)
+    }
+    
+    # Filter numeric
+    data <- filter(
+      data,
+      between(Distance,
+              input$distance[1],
+              input$distance[2]),
+      between(Price,
+              input$price[1],
+              input$price[2])
+    )
+    
+    data
   })
   
-  ## Download Button
+  # The table
+  output$dataTable <- DT::renderDataTable({
+    
+    req(mhSub())
+    
+    DT::datatable(
+      mhSub(),
+      options = list(pageLength = 10),
+      rownames = FALSE
+    )
+  })
+  
+  # Downloading
   output$downloadData <- downloadHandler(
+    
     filename = function() {
-      paste('data-', Sys.Date(), '.csv', sep='')
+      paste0("data-", Sys.Date(), ".csv")
     },
-    content = function(con) {
-      write.csv(data, con)
+    
+    content = function(file) {
+      write.csv(
+        mhSub(),
+        file,
+        row.names = FALSE
+      )
     }
   )
+  
+  ########## Data Exploration  ########## 
+  
+  observeEvent(input$plots, {
+    if(input$plots == ""){
+      
+    }
+  })
+
 }
 
 # Run the application 
