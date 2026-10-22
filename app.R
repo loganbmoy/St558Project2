@@ -10,6 +10,7 @@ library(tidyverse)
 library(scales)
 library(shinydashboard)
 library(shinycssloaders)
+library(ggbeeswarm)
 
 # Loading Data
 mhData <- readRDS("data/mhData.rds")
@@ -182,16 +183,13 @@ ui <- dashboardPage(
       
       # Row for graphs
       fluidRow(
-        # If a certain number the following plots use the same vars, something like this could be useful
-        # prob will restrict though, so unique choices will be used
-        # fluidRow(
-        #   box(
-        #     width = 12,
-        #
-        #     selectInput("numVar", "Numeric Variable", numVars),
-        #     selectInput("catVar", "Categorical Variable", catVars)
-        #   )
-        # ),
+        
+        box(
+          title = "Subset Information",
+          width = 12,
+          
+          textOutput("subsetInfo")
+        ),
         
         tabBox(
           title = "Graphs",
@@ -377,7 +375,7 @@ ui <- dashboardPage(
             "Boxplot",
             radioButtons(
               "boxVarx",
-              "X Variable",
+              "Categorical Variable",
               choices = c(
                 "Rooms" = "Rooms",
                 "Type" = "Type",
@@ -389,7 +387,7 @@ ui <- dashboardPage(
             ),
             radioButtons(
               "boxVary",
-              "Y Variable",
+              "Numeric Variable",
               choices = c(
                 "Price" = "Price",
                 "Property Count" = "Propertycount",
@@ -397,47 +395,49 @@ ui <- dashboardPage(
               )
             ),
             
-            plotOutput("mhBoxplot"),
-            tabPanel(
-              "Beeswarm",
-              radioButtons(
-                "beeVarx",
-                "X Variable",
-                choices = c(
-                  "Rooms" = "Rooms",
-                  "Type" = "Type",
-                  "Month" = "Month",
-                  "Year" = "Year",
-                  "Region" = "Regionname",
-                  "Method of Sale" = "Method"
-                )
+            plotOutput("mhBoxplot")
+          ),
+          
+          tabPanel(
+            "Beeswarm",
+            radioButtons(
+              "beeVarx",
+              "Categorical Variable",
+              choices = c(
+                "Rooms" = "Rooms",
+                "Type" = "Type",
+                "Month" = "Month",
+                "Year" = "Year",
+                "Region" = "Regionname",
+                "Method of Sale" = "Method"
+              )
+            ),
+            radioButtons(
+              "beeVary",
+              "Numeric Variable",
+              choices = c(
+                "Price" = "Price",
+                "Property Count" = "Propertycount",
+                "Distance" = "Distance"
+              )
+            ),
+            radioButtons(
+              "beeColor",
+              "Color Variable",
+              choices = c(
+                "None" = "None",
+                "Rooms" = "Rooms",
+                "Type" = "Type",
+                "Month" = "Month",
+                "Year" = "Year",
+                "Region" = "Regionname",
+                "Method of Sale" = "Method"
               ),
-              radioButtons(
-                "beeVary",
-                "Y Variable",
-                choices = c(
-                  "Price" = "Price",
-                  "Property Count" = "Propertycount",
-                  "Distance" = "Distance"
-                )
-              ),
-              radioButtons(
-                "beeColor",
-                "Color Variable",
-                choices = c(
-                  "None" = "None",
-                  "Rooms" = "Rooms",
-                  "Type" = "Type",
-                  "Month" = "Month",
-                  "Year" = "Year",
-                  "Region" = "Regionname",
-                  "Method of Sale" = "Method"
-                ),
-                selected = "None"
-              ),
-              withSpinner(plotOutput("mhBee"))
-            )
+              selected = "None"
+            ),
+            withSpinner(plotOutput("mhBee"))
           )
+          
         ),
         
         # Row for summaries
@@ -461,6 +461,7 @@ ui <- dashboardPage(
               "sumCatVar",
               "Categorical Variable",
               choices = c(
+                "None" = "None",
                 "Rooms" = "Rooms",
                 "Type" = "Type",
                 "Month" = "Month",
@@ -510,6 +511,23 @@ ui <- dashboardPage(
 
 # Server
 server <- function(input, output, session) {
+  
+  # Subset Information
+  output$subsetInfo <- renderText({
+    
+    req(mhSub())
+    
+    if (nrow(mhSub()) == 0) {
+      "No observations remain after filtering."
+    } else {
+      paste(
+        "Current subset contains", nrow(mhSub()), "observations."
+      )
+    }
+    
+  })
+  
+  
   ########## Data Download  ##########
   
   # Reactive filter
@@ -558,14 +576,84 @@ server <- function(input, output, session) {
   ########## Data Exploration  ##########
   
   
-  # Plots
-  # output$mhHistogram <- renderPlot({
+  ###### Plots all remake whenever user changes anything
+  
+  # Histogram
+  output$mhHistogram <- renderPlot({
+    req(mhSub())
+    
+    validate(
+      need(!is.null(input$histVar),"Select a numerical variable.")
+    )
+    if (input$histColor != "None") {
+      ggplot(mhSub(), aes(.data[[input$histVar]], fill = .data[[input$histColor]])) + geom_histogram(bins = 25) +
+        labs(caption = "Bins = 25") +
+        scale_fill_viridis_d(option = "C") +
+        theme_minimal()
+    } else {
+      ggplot(mhSub(), aes(.data[[input$histVar]])) + geom_histogram(bins = 25) +
+        labs(caption = "Bins = 25") +
+        theme_minimal()
+    }
+    
+  })
+  
+  # Scatter
+  output$mhScatter <- renderPlot({
+    req(mhSub())
+    
+    validate(
+      need(!is.null(input$scatterVarx),"Select a numeric variable."),
+      need(!is.null(input$scatterVary), "Select a numeric variable.")
+    )
+    if (input$scatterColor != "None") {
+      ggplot(mhSub(), aes(.data[[input$scatterVarx]], .data[[input$scatterVary]], color = .data[[input$scatterColor]])) + geom_point(na.rm = TRUE, alpha = 0.5) +
+        scale_color_viridis_d(option = "C") +
+        theme_minimal()
+    } else {
+      ggplot(mhSub(), aes(.data[[input$scatterVarx]], .data[[input$scatterVary]])) + geom_point(na.rm = TRUE, alpha = 0.5) +
+        theme_minimal()
+    }
+    
+  })
+  
+  # Box
+  # output$mhBoxplot <- renderPlot({
+  #   req(mhSub())
+  #   
   #   validate(
-  #     need(!is.null(sample_corr$corr_data), "Please select your variables, subset, and click the 'Get a Sample!' button.")
+  #     need(!is.null(input$boxVarx),"Select a categorical variable."),
+  #     need(!is.null(input$boxVary), "Select a numeric variable.")
   #   )
-  #   ggplot(sample_corr$corr_data, aes_string(x = isolate(input$corr_x), y = isolate(input$corr_y))) +
-  #     geom_point()
+  #   if (input$scatterColor != "None") {
+  #     ggplot(mhSub(), aes(.data[[input$boxVarx]], .data[[input$boxVary]], color = .data[[input$boxColor]])) + geom_boxplot() +
+  #       scale_color_viridis_d(option = "C") +
+  #       theme_minimal()
+  #   } else {
+  #     ggplot(mhSub(), aes(.data[[input$boxVarx]], .data[[input$boxVary]])) + geom_boxplot() + 
+  #       theme_minimal()
+  #   }
+  #   
   # })
+  # 
+  # Beeswarm
+  output$mhBee <- renderPlot({
+    req(mhSub())
+    
+    validate(
+      need(!is.null(input$beeVarx),"Select a categorical variable."),
+      need(!is.null(input$beeVary), "Select a numeric variable.")
+    )
+    if (input$beeColor != "None") {
+      ggplot(mhSub(), aes(.data[[input$beeVarx]], .data[[input$beeVary]], color = .data[[input$beeColor]])) + geom_quasirandom(na.rm = TRUE, alpha = 0.5) +
+        scale_color_viridis_d(option = "C") +
+        theme_minimal()
+    } else {
+      ggplot(mhSub(), aes(.data[[input$beeVarx]], .data[[input$beeVary]])) + geom_quasirandom(na.rm = TRUE, alpha = 0.5) +
+        theme_minimal()
+    }
+
+  })
   
   
   
@@ -581,21 +669,34 @@ server <- function(input, output, session) {
       need(!is.null(input$sumNumVar), "Select a numeric variable.")
     )
     
-    summaryQ <- function(df, group, var) {
-      df %>%
-        group_by(.data[[group]]) %>%
+    if (input$sumCatVar == "None") {
+      
+      mhSub() %>%
         summarize(
           n = n(),
-          mean = mean(.data[[var]], na.rm = TRUE),
-          sd = sd(.data[[var]], na.rm = TRUE),
-          median = median(.data[[var]], na.rm = TRUE),
-          min = min(.data[[var]], na.rm = TRUE),
-          max = max(.data[[var]], na.rm = TRUE),
+          mean = mean(.data[[input$sumNumVar]], na.rm = TRUE),
+          sd = sd(.data[[input$sumNumVar]], na.rm = TRUE),
+          median = median(.data[[input$sumNumVar]], na.rm = TRUE),
+          min = min(.data[[input$sumNumVar]], na.rm = TRUE),
+          max = max(.data[[input$sumNumVar]], na.rm = TRUE)
+        )
+      
+    } else {
+      
+      mhSub() %>%
+        group_by(.data[[input$sumCatVar]]) %>%
+        summarize(
+          n = n(),
+          mean = mean(.data[[input$sumNumVar]], na.rm = TRUE),
+          sd = sd(.data[[input$sumNumVar]], na.rm = TRUE),
+          median = median(.data[[input$sumNumVar]], na.rm = TRUE),
+          min = min(.data[[input$sumNumVar]], na.rm = TRUE),
+          max = max(.data[[input$sumNumVar]], na.rm = TRUE),
           .groups = "drop"
         )
+      
     }
-    
-    summaryQ(mhSub(), input$sumCatVar, input$sumNumVar)
+
   })
   
   output$summaryStats <- renderTable({
