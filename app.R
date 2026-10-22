@@ -224,12 +224,12 @@ ui <- dashboardPage(
             withSpinner(plotOutput("mhHistogram"))
           ),
           
-          ########################## maybe add pos option for side-by-side here
+          # Bar graph allows the user to control pos as well
           tabPanel(
             "Bar Graph",
             radioButtons(
-              "barVarx",
-              "X Variable",
+              "barVar",
+              "Categorical Variable",
               choices = c(
                 "Rooms" = "Rooms",
                 "Type" = "Type",
@@ -253,14 +253,25 @@ ui <- dashboardPage(
               ),
               selected = "None"
             ),
+            radioButtons(
+              "barPos",
+              "Bar Position",
+              choices = c(
+                "Stack",
+                "Dodge",
+                "Fill"
+              ),
+              selected = "Stack"
+            ),
             withSpinner(plotOutput("mhBar"))
           ),
           
+          # Multiple tabs of bar exist, too lazy to combine them into one with dropdown or smthing
           tabPanel(
             "Facet Bar Graph",
             radioButtons(
-              "barFacetVarx",
-              "X Variable",
+              "barFacetVar",
+              "Categorical Variable",
               choices = c(
                 "Rooms" = "Rooms",
                 "Type" = "Type",
@@ -288,7 +299,6 @@ ui <- dashboardPage(
               "barFacetFacet",
               "Facet Variable",
               choices = c(
-                "None" = "None",
                 "Rooms" = "Rooms",
                 "Type" = "Type",
                 "Month" = "Month",
@@ -296,24 +306,26 @@ ui <- dashboardPage(
                 "Region" = "Regionname",
                 "Method of Sale" = "Method"
               ),
-              selected = "None"
+              selected = "Rooms"
             ),
             withSpinner(plotOutput("mhBarFacet"))
 
           ),
           
+          # Only exists so I can include council area, which has really long names
           tabPanel(
             "Flipped Bar Graph",
             radioButtons(
-              "barFlipVarx",
-              "X Variable",
+              "barFlipVar",
+              "Categorical Variable",
               choices = c(
                 "Rooms" = "Rooms",
                 "Type" = "Type",
                 "Month" = "Month",
                 "Year" = "Year",
                 "Region" = "Regionname",
-                "Method of Sale" = "Method"
+                "Method of Sale" = "Method",
+                "Council Area" = "CouncilArea"
               )
             ),
             radioButtons(
@@ -326,7 +338,8 @@ ui <- dashboardPage(
                 "Month" = "Month",
                 "Year" = "Year",
                 "Region" = "Regionname",
-                "Method of Sale" = "Method"
+                "Method of Sale" = "Method",
+                "Council Area" = "CouncilArea"
               ),
               selected = "None"
             ),
@@ -394,7 +407,20 @@ ui <- dashboardPage(
                 "Distance" = "Distance"
               )
             ),
-            
+            radioButtons(
+              "boxColor",
+              "Color Variable",
+              choices = c(
+                "None" = "None",
+                "Rooms" = "Rooms",
+                "Type" = "Type",
+                "Month" = "Month",
+                "Year" = "Year",
+                "Region" = "Regionname",
+                "Method of Sale" = "Method"
+              ),
+              selected = "None"
+            ),
             plotOutput("mhBoxplot")
           ),
           
@@ -598,6 +624,67 @@ server <- function(input, output, session) {
     
   })
   
+  # Bar
+  output$mhBar <- renderPlot({
+    req(mhSub())
+    
+    validate(
+      need(!is.null(input$barVar),"Select a categorical variable.")
+    )
+    if (input$barColor != "None") {
+      ggplot(mhSub(), aes(.data[[input$barVar]], fill = .data[[input$barColor]])) + geom_bar(position = input$barPos) +
+        scale_fill_viridis_d(option = "C") +
+        theme_minimal()
+    } else {
+      ggplot(mhSub(), aes(.data[[input$barVar]])) + geom_bar(position = input$barPos) +
+        theme_minimal()
+    }
+    
+  })
+  
+  # Faceted Bar
+  output$mhBarFacet <- renderPlot({
+    req(mhSub())
+    
+    validate(
+      need(!is.null(input$barFacetVar),"Select a categorical variable."),
+      need(!is.null(input$barFacetFacet),"Select a facet variable.")
+    )
+    if (input$barFacetColor != "None") {
+      ggplot(mhSub(), aes(.data[[input$barFacetVar]], fill = .data[[input$barFacetColor]])) + geom_bar() +
+        facet_wrap(~.data[[input$barFacetFacet]]) +
+        scale_fill_viridis_d(option = "C") +
+        theme_minimal()
+    } else {
+      ggplot(mhSub(), aes(.data[[input$barFacetVar]])) + geom_bar() +
+        facet_wrap(~.data[[input$barFacetFacet]]) +
+        theme_minimal()
+    }
+    
+  })
+  
+  # Flipped Bar
+  output$mhBarFlip <- renderPlot({
+    req(mhSub())
+    
+    validate(
+      need(!is.null(input$barFlipVar),"Select a categorical variable.")
+    )
+    if (input$barFlipColor != "None") {
+      ggplot(mhSub(), aes(x = reorder(.data[[input$barFlipVar]], .data[[input$barFlipVar]], length), fill = .data[[input$barFlipColor]])) +
+        geom_bar() +
+        coord_flip() +
+        theme_minimal()
+    } else {
+      ggplot(mhSub(), aes(x = reorder(.data[[input$barFlipVar]], .data[[input$barFlipVar]], length))) + geom_bar() +
+        geom_bar() +
+        coord_flip() +
+        theme_minimal()
+    }
+    
+  })
+  
+  
   # Scatter
   output$mhScatter <- renderPlot({
     req(mhSub())
@@ -618,24 +705,24 @@ server <- function(input, output, session) {
   })
   
   # Box
-  # output$mhBoxplot <- renderPlot({
-  #   req(mhSub())
-  #   
-  #   validate(
-  #     need(!is.null(input$boxVarx),"Select a categorical variable."),
-  #     need(!is.null(input$boxVary), "Select a numeric variable.")
-  #   )
-  #   if (input$scatterColor != "None") {
-  #     ggplot(mhSub(), aes(.data[[input$boxVarx]], .data[[input$boxVary]], color = .data[[input$boxColor]])) + geom_boxplot() +
-  #       scale_color_viridis_d(option = "C") +
-  #       theme_minimal()
-  #   } else {
-  #     ggplot(mhSub(), aes(.data[[input$boxVarx]], .data[[input$boxVary]])) + geom_boxplot() + 
-  #       theme_minimal()
-  #   }
-  #   
-  # })
-  # 
+  output$mhBoxplot <- renderPlot({
+    req(mhSub())
+
+    validate(
+      need(!is.null(input$boxVarx),"Select a categorical variable."),
+      need(!is.null(input$boxVary), "Select a numeric variable.")
+    )
+    if (input$boxColor != "None") {
+      ggplot(mhSub(), aes(.data[[input$boxVarx]], .data[[input$boxVary]], color = .data[[input$boxColor]])) + geom_boxplot() +
+        scale_color_viridis_d(option = "C") +
+        theme_minimal()
+    } else {
+      ggplot(mhSub(), aes(.data[[input$boxVarx]], .data[[input$boxVary]])) + geom_boxplot() +
+        theme_minimal()
+    }
+
+  })
+
   # Beeswarm
   output$mhBee <- renderPlot({
     req(mhSub())

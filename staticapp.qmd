@@ -127,7 +127,7 @@ ggplot(mhData, aes(x = Distance, y = Price, color = Method)) + geom_point(na.rm 
 
 ```{r}
 ggplot(mhData, aes(x = Method, fill = Type )) +
-  geom_bar(position = "dodge") +
+  geom_bar(position = "STACK") +
   labs(title = "Most properties are sold",
        x = "Sell method") +
   theme_minimal()
