@@ -51,26 +51,37 @@ ui <- dashboardPage(
       selected = "All"
     ),
     
-    # Num vars
-    ################## making it dynamic
+    # Num vars now dynamic
     
-    h2("Distance (km) from Central Business District (CBD)"),
-    sliderInput(
-      inputId = "distance",
-      label = "Distance:",
-      min = 0,
-      max = 65,
-      value = c(20, 40)
+    h2("Numeric Filter 1"),
+    
+    selectInput(
+      "numVar1",
+      "Variable:",
+      choices = c(
+        "Price" = "Price",
+        "Property Count" = "Propertycount",
+        "Distance" = "Distance"
+      ),
+      selected = "Price"
     ),
     
-    h2("Price (AUD) of Property"),
-    sliderInput(
-      inputId = "price",
-      label = "Price:",
-      min = 85000,
-      max = 11200000,
-      value = c(100000, 1000000)
+    uiOutput("numSlider1"),
+    
+    h2("Numeric Filter 2"),
+    
+    selectInput(
+      "numVar2",
+      "Variable:",
+      choices = c(
+        "Price" = "Price",
+        "Property Count" = "Propertycount",
+        "Distance" = "Distance"
+      ),
+      selected = "Distance"
     ),
+    
+    uiOutput("numSlider2"),
     
     actionButton(inputId = "houseSub", label = "Subset Data"),
     
@@ -529,6 +540,42 @@ ui <- dashboardPage(
 # Server
 server <- function(input, output, session) {
   
+  ########## Subset  ##########
+  
+  # Dynamic numeric sliders
+  output$numSlider1 <- renderUI({
+    
+    var <- input$numVar1
+    
+    sliderInput(
+      "numRange1",
+      label = paste(var, "Range"),
+      min = min(mhData[[var]], na.rm = TRUE),
+      max = max(mhData[[var]], na.rm = TRUE),
+      value = c(
+        min(mhData[[var]], na.rm = TRUE),
+        max(mhData[[var]], na.rm = TRUE)
+      )
+    )
+  })
+  
+  output$numSlider2 <- renderUI({
+    
+    var <- input$numVar2
+    
+    sliderInput(
+      "numRange2",
+      label = paste(var, "Range"),
+      min = min(mhData[[var]], na.rm = TRUE),
+      max = max(mhData[[var]], na.rm = TRUE),
+      value = c(
+        min(mhData[[var]], na.rm = TRUE),
+        max(mhData[[var]], na.rm = TRUE)
+      )
+    )
+  })
+  
+  
   # Subset Information
   output$subsetInfo <- renderText({
     
@@ -545,10 +592,13 @@ server <- function(input, output, session) {
   })
   
   
-  ########## Data Download  ##########
-  
   # Reactive filter
   mhSub <- eventReactive(input$houseSub, {
+    
+    validate(
+      need(input$numVar1 != input$numVar2, "Filter by two different numeric variables.")
+    )
+    
     data <- mhData
     
     # Filter cate
@@ -563,12 +613,14 @@ server <- function(input, output, session) {
     # Filter numeric
     data <- filter(
       data,
-      between(Distance, input$distance[1], input$distance[2]),
-      between(Price, input$price[1], input$price[2])
+      between(.data[[input$numVar1]], input$numRange1[1], input$numRange1[2]),
+      between(.data[[input$numVar2]], input$numRange2[1], input$numRange2[2])
     )
     
     data
   })
+  
+  ########## Data Download  ##########
   
   # The table
   output$dataTable <- DT::renderDataTable({
