@@ -15,17 +15,6 @@ library(ggbeeswarm)
 # Loading Data
 mhData <- readRDS("data/mhData.rds")
 
-numVars <- mhData[sapply(mhData, is.numeric)] %>%
-  #select(-c(Day, Postcode)) %>%
-  names
-
-# charVars <- mhData[sapply(mhData, is.character)] %>%
-#   select(-c(Address, Date)) %>% # not really interested in looking at these, too many unique values or accounted for elsewhere
-#   names
-
-catVars <- mhData[sapply(mhData, is.factor)] %>%
-  select(-c(Method)) %>% # Methodlab is a bit more descriptive and CouncilArea should be reserved for certain bar graphs
-  names
 
 # Define UI for application that explores the Melbourne Data
 
@@ -63,6 +52,8 @@ ui <- dashboardPage(
     ),
     
     # Num vars
+    ################## making it dynamic
+    
     h2("Distance (km) from Central Business District (CBD)"),
     sliderInput(
       inputId = "distance",
@@ -306,7 +297,7 @@ ui <- dashboardPage(
                 "Region" = "Regionname",
                 "Method of Sale" = "Method"
               ),
-              selected = "Rooms"
+              selected = "Type"
             ),
             withSpinner(plotOutput("mhBarFacet"))
 
@@ -421,7 +412,7 @@ ui <- dashboardPage(
               ),
               selected = "None"
             ),
-            plotOutput("mhBoxplot")
+            withSpinner(plotOutput("mhBoxplot"))
           ),
           
           tabPanel(
@@ -629,7 +620,11 @@ server <- function(input, output, session) {
     req(mhSub())
     
     validate(
-      need(!is.null(input$barVar),"Select a categorical variable.")
+      need(
+        input$barColor == "None" ||
+        input$barVar != input$barColor,
+        "Color variable must be different from the categorical variable."
+      )
     )
     if (input$barColor != "None") {
       ggplot(mhSub(), aes(.data[[input$barVar]], fill = .data[[input$barColor]])) + geom_bar(position = input$barPos) +
@@ -647,8 +642,14 @@ server <- function(input, output, session) {
     req(mhSub())
     
     validate(
-      need(!is.null(input$barFacetVar),"Select a categorical variable."),
-      need(!is.null(input$barFacetFacet),"Select a facet variable.")
+      need(
+        (input$barFacetVar != input$barFacetFacet &&
+         input$barFacetColor != input$barFacetFacet &&
+         input$barFacetVar != input$barFacetColor
+        ) |
+        input$barFacetColor == "None",
+        "Cannot use the same categorical variable."
+      )
     )
     if (input$barFacetColor != "None") {
       ggplot(mhSub(), aes(.data[[input$barFacetVar]], fill = .data[[input$barFacetColor]])) + geom_bar() +
@@ -668,7 +669,11 @@ server <- function(input, output, session) {
     req(mhSub())
     
     validate(
-      need(!is.null(input$barFlipVar),"Select a categorical variable.")
+      need(
+        input$barFlipColor == "None" ||
+        input$barFlipVar != input$barFlipColor,
+        "Color variable must be different from the categorical variable."
+      )
     )
     if (input$barFlipColor != "None") {
       ggplot(mhSub(), aes(x = reorder(.data[[input$barFlipVar]], .data[[input$barFlipVar]], length), fill = .data[[input$barFlipColor]])) +
@@ -676,7 +681,7 @@ server <- function(input, output, session) {
         coord_flip() +
         theme_minimal()
     } else {
-      ggplot(mhSub(), aes(x = reorder(.data[[input$barFlipVar]], .data[[input$barFlipVar]], length))) + geom_bar() +
+      ggplot(mhSub(), aes(x = reorder(.data[[input$barFlipVar]], .data[[input$barFlipVar]], length))) +
         geom_bar() +
         coord_flip() +
         theme_minimal()
@@ -690,8 +695,10 @@ server <- function(input, output, session) {
     req(mhSub())
     
     validate(
-      need(!is.null(input$scatterVarx),"Select a numeric variable."),
-      need(!is.null(input$scatterVary), "Select a numeric variable.")
+      need(
+        input$scatterVarx != input$scatterVary,
+        "Scatterplot should use two different numerical variables."
+      )
     )
     if (input$scatterColor != "None") {
       ggplot(mhSub(), aes(.data[[input$scatterVarx]], .data[[input$scatterVary]], color = .data[[input$scatterColor]])) + geom_point(na.rm = TRUE, alpha = 0.5) +
@@ -709,8 +716,11 @@ server <- function(input, output, session) {
     req(mhSub())
 
     validate(
-      need(!is.null(input$boxVarx),"Select a categorical variable."),
-      need(!is.null(input$boxVary), "Select a numeric variable.")
+      need(
+        input$boxColor == "None" ||
+        input$boxVarx != input$boxColor,
+        "Color variable must be different from the categorical variable."
+      )
     )
     if (input$boxColor != "None") {
       ggplot(mhSub(), aes(.data[[input$boxVarx]], .data[[input$boxVary]], color = .data[[input$boxColor]])) + geom_boxplot() +
@@ -728,8 +738,11 @@ server <- function(input, output, session) {
     req(mhSub())
     
     validate(
-      need(!is.null(input$beeVarx),"Select a categorical variable."),
-      need(!is.null(input$beeVary), "Select a numeric variable.")
+      need(
+        input$beeColor == "None" ||
+          input$beeVarx != input$beeColor,
+        "Color variable must be different from the categorical variable."
+      )
     )
     if (input$beeColor != "None") {
       ggplot(mhSub(), aes(.data[[input$beeVarx]], .data[[input$beeVary]], color = .data[[input$beeColor]])) + geom_quasirandom(na.rm = TRUE, alpha = 0.5) +
